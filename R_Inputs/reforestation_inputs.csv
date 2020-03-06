@@ -1,0 +1,4 @@
+Group,activity,type,rate_mean,rate_sd,stock_mean,stock_sd,fire_mean,fire_sd,mean_reveg,cv,baseline
+Forest,reforestation_low,seq,NA,NA,0,0,16995.41,29471.71586,0.12,0.72,2039.45
+Forest,reforestation_moderate,seq,NA,NA,0,0,2348.66,3676.865157,0.22,1.18,516.71
+Forest,reforestation_high,seq,NA,NA,0,0,1829.93,4889.226115,0.09,1.23,164.69

@@ -1,0 +1,14 @@
+activity,type,baseline,cv,seq_rate,seq_rate_sd,ac_stock,ac_stock_sd
+AC_forest_to_urban_west,AC,74.75,0.1,9.106805363,2.803533053,403.8,69.02
+AC_forest_to_urban_east,AC,72.77,0.1,2.085620021,0.724062113,210.42,41.42
+AC_forest_to_rural_west,AC,1007.06,0.1,4.553402681,1.401766526,201.9,69.02
+AC_forest_to_rural_east,AC,922.39,0.1,1.042810011,0.362031056,105.21,20.71
+AC_sage_to_iag,AC,4000,0.1,0.8,0.44,16.13,6.6
+restor_iag_to_sage,seq,5590,0.1,0.8,0.44,0,0
+restor_to_tidal_wetland,AC,48.9,1,8.84,3.92,0,0
+restor_ripforest_east,seq,1712.82,0.66,12.168,0.494,0,0
+restor_ripforest_west,seq,682.78,0.54,15.805,0.435,0,0
+AC_grassland_to_ag,AC,931,0.1,0,0,67.6,7.66
+cover_crop_use,seq,48740,0.06,1.17,0.29,0,0
+no_till_ag,seq,403280,0.08,0.12,0.53,0,0
+N_management,AC,186294,0.18,0,0,2.98,7.57
