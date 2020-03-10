@@ -100,7 +100,7 @@ for (ynum in 11:31){
   harvest_imp[,ynum,3] <- harvest_scenariotargets$amb_target*harvest_scenariotargets$baseline # maintain constant implementation rate for years 11 - 31
 }
 
-## RUN SCENARIOS FOR Timber Harvest ####
+## RUN SCENARIOS FOR Timber Harvest 
 # set up empty data frames to hold simulation results
 harvest_carbon_sum = array(NA, dim=c(imp_scenarios,iterations,length(years),dim(harvest_carbonstocks)[1]))
 results_out = list()
@@ -148,7 +148,7 @@ for (irate in 1:imp_scenarios) {
   print(paste('finished harvest implementation scenario ', irate))
 } 
 
-## Summarize harvest Monte Carlo RESULTS to median and 95% CI for each year, each activity ####
+## Summarize harvest Monte Carlo RESULTS to median and 95% CI for each year, each activity 
 harvest_CI_High <- apply(harvest_carbon_sum,c(1,3,4),quantile,0.95)/1e6
 rownames(harvest_CI_High) <- scenario.names
 harvest_median <- apply(harvest_carbon_sum,c(1,3,4),median)/1e6
@@ -167,14 +167,6 @@ colnames(Mod_harvest)=c("med","upper","lower")
 harvest_by_year_all_ownerships <- cbind.data.frame(rbind(LimitedImp_harvest,Mod_harvest,Amb_harvest),scen)
 harvest_by_year_all_ownerships$year <- rep(yr,3)
 harvest_by_year_all_ownerships$actname <- rep("Timber Harvest",93)
-
-## save harvest simulation results
-save(harvest_carbon_sum, harvest_CI_High, harvest_CI_Low, harvest_median, LimitedImp_harvest, Amb_harvest, Mod_harvest,harvest_by_year_all_ownerships, harvest_imp, file="harvest_scenario_results.RData")
-
-# display results
-ggplot(harvest_by_year_all_ownerships,aes(x=year,y=med))+
-  geom_line(aes(color=scen))+
-  geom_ribbon(aes(ymin=lower, ymax=upper, color=scen), linetype=2,alpha=0.1)
 
 # 2. Reforestation after wildfires (reforest) ####
 # Reforestation INPUT FILES 
@@ -236,7 +228,7 @@ for (ynum in 21:31){  # ramp up to 2050 target
 }
 reforest_imp[reforest_imp>1.0] <- 1.0
 
-## implementation scenarios for reforestation ####
+## implementation scenarios for reforestation 
 # carbon data
 model_carbon_reforest_low <- read.csv("R_Inputs/model_carbon_reforestation_low_v2.csv")
 model_carbon_reforest_mod <- read.csv("R_Inputs/model_carbon_reforestation_mod_v2.csv")
@@ -292,8 +284,8 @@ for (irate in 1:imp_scenarios) {
   print(paste('finished Reforest implementation scenario ', irate))
 } 
 
-## summarize and save Reforestation results ####
-## Summarize to median and 95% CI for each year, each activity ###
+## summarize and save Reforestation results 
+## Summarize to median and 95% CI for each year, for low, moderate, and high productivity forests (see methods Graves et al. 2020)
 reforest_CI_High <- apply(reforest_carbon_sum,c(1,3,4),quantile,0.95)/1e6
 rownames(reforest_CI_High) <- scenario.names
 reforest_median <- apply(reforest_carbon_sum,c(1,3,4),median)/1e6
@@ -313,19 +305,10 @@ reforest_by_year_all_prodclass <- cbind.data.frame(rbind(LowImp_reforest,Mod_ref
 reforest_by_year_all_prodclass$year <- rep(yr,3)
 reforest_by_year_all_prodclass$actname <- rep("Replant Wildfires",93)
 
-## display results
-ggplot(reforest_by_year_all_prodclass,aes(x=year,y=med))+
-  geom_line(aes(color=scen))+
-  geom_ribbon(aes(ymin=lower, ymax=upper, color=scen), linetype=2,alpha=0.1)
-
-## save reforestation simulation results
-save(reforest_carbon_sum, reforest_CI_High, reforest_CI_Low, reforest_median, LowImp_reforest, Amb_reforest, Mod_reforest, reforest_by_year_all_prodclass, reforest_imprates,reforest_imp, file="reforest_scenario_results.RData")
-save(fire_area,file="fire_area.RData")
-
-### 3. Avoided conversion of forests (ACF) ####
+# 3. Avoided conversion of forests (ACF) --------------------------------------
 ## load NCS input file
-NCS_inputs = read.csv("all_other_model_inputs.csv") 
-AC_forests_imprates = NCS_inputs[c(1:4),c(1:4)]
+NCS_inputs = read.csv("R_Inputs/Oregon_NCS_all_other_model_inputs.csv") 
+AC_forests_imprates = NCS_inputs[c(1:4),c(1:4)] # subest the forest conversion values
 AC_forests_imprates$activity <-as.factor(AC_forests_imprates$activity)
 AC_forests_imprates$activity <-droplevels(AC_forests_imprates$activity)
 ACF_carbon_stocks = NCS_inputs[c(1:4),c(1:2,7:8)]
@@ -342,43 +325,52 @@ ACF_carbon_rates$type<-as.factor(ACF_carbon_rates$type)
 ACF_carbon_rates[1:2,3]<- ACF_carbon_rates[1:2,3]*0.84
 
 ## set implementation targets for the 3 scenarios
-AC_forests_imprates
+AC_forests_imprates # review baseline (annual ha converted) and historical variation (CV)
 
-## build scenario implementation rates ####
+# Avoided Conversion of Forests narrative description
+# All scenarios include a linear decrease to the target rate by 2030
+# Limited Implementation = Reduce conversions by 10% by 2030, then stays constant
+# Moderate Implementation = Reduce conversions by 50% by 2030, then stays constant
+# Ambitious Implementation = Reduce conversions by 100% by 2030, then remain at zero
+
+AC_forests_target2030 <- c(0.1,0.5,1.0) # percent reduction in conversion for each target decade in each of three scenarios
+AC_forests_target2040 <- c(0.1,0.5,1.0)
+AC_forests_target2050 <- c(0.1,0.5,1.0)
+
+# build scenario implementation rates 
 
 ACF_imp <- array(NA,dim=c(length(AC_forests_imprates$activity),length(years),imp_scenarios), dimnames=list(AC_forests_imprates$activity,years,scenario.names))
-# limited implementation: assume historical variation of 10%, to be reached by 2030
-ACF_imp[,10:31,1] <- AC_forests_imprates$baseline*0.10 # historical variation
-for (cnum in 1:9){  # ramp up period of 10 years to reach the historical variation
-  ACF_imp[,cnum,1] <- ((AC_forests_imprates$baseline*0.10)/10)*cnum
+# limited implementation
+for (ynum in 1:9){  # ramp up period of 10 years to reach the 2030 target
+  ACF_imp[,ynum,1] <- ((AC_forests_imprates$baseline*AC_forests_target2030[1])/10)*ynum
 }
-#ambitious implementation
-for (cnum in 1:10){ # ramp up quickly over first 10 years to zero conversion
-  ACF_imp[,cnum,3] <- (AC_forests_imprates$baseline/10)*cnum
-}
-ACF_imp[,10:31,3] <- AC_forests_imprates$baseline
+ACF_imp[,10:31,1] <- AC_forests_imprates$baseline*AC_forests_target2050[1] # remain constant from 2030 - 2050
 
-# moderate implementation
-for (cnum in 1:9){
-  ACF_imp[,cnum,2] <- ((AC_forests_imprates$baseline*0.5)/10)*cnum
+#moderate implementation
+for (ynum in 1:9){  
+  ACF_imp[,ynum,2] <- ((AC_forests_imprates$baseline*AC_forests_target2030[2])/10)*ynum
 }
-ACF_imp[,10:31,2] <- AC_forests_imprates$baseline*0.5
+ACF_imp[,10:31,2] <- AC_forests_imprates$baseline*AC_forests_target2050[2] # remain constant from 2030 - 2050
 
-## run scenarios of avoided forest conversion ####
+# ambitious implementation
+for (ynum in 1:9){  # ramp up period of 10 years to reach the 2030 target
+  ACF_imp[,ynum,3] <- ((AC_forests_imprates$baseline*AC_forests_target2030[3])/10)*ynum
+}
+ACF_imp[,10:31,3] <- AC_forests_imprates$baseline*AC_forests_target2050[3] # remain constant from 2030 - 2050
+
+
+## run scenarios of avoided forest conversion 
 # set up empty data frames to hold simulation results
 ACF_carbon_sum = array(NA, dim=c(imp_scenarios,iterations,length(years),length(AC_forests_imprates$activity)))
 results_out = list()
 
 # SCENARIO LOOP
 for (irate in 1:imp_scenarios) {
-  # irate=1
   # ACTIVITY LOOP
-  for (act in 1:dim(ACF_carbon_stocks)[1]) {
-    # act = 1
+  for (act in 1:dim(ACF_carbon_stocks)[1]){
     act_name = ACF_carbon_stocks$activity[act]
     for (y in 1:length(years)){  ## get implementation rate for each year and activity
-      # y=1
-      imp_rate = if (irate == 1) {
+      imp_rate = if (irate == 1) {  ## IF NUMBER OF SCENARIOS CHANGES, DOUBLE CHECK THIS SECTION OF CODE!!
         imp_rate = ACF_imp[act,y,1]
       }else if (irate == 2) {
         imp_rate = ACF_imp[act,y,2]
@@ -414,7 +406,7 @@ for (irate in 1:imp_scenarios) {
   print(paste('finished implementation scenario ', irate))
 }
 
-## Summarize ACF RESULTS to median and 95% CI for each year, each activity ####
+## Summarize ACF RESULTS to median and 95% CI for each year, each activity 
 ACF_CI_High <- apply(ACF_carbon_sum,c(1,3,4),quantile,0.95)/1e6
 rownames(ACF_CI_High) <- scenario.names
 ACF_median <- apply(ACF_carbon_sum,c(1,3,4),median)/1e6
@@ -433,15 +425,8 @@ ACF_by_year_all <- cbind.data.frame(rbind(LowImp_ACF,Mod_ACF,Amb_ACF),scen)
 ACF_by_year_all$year <- rep(yr,3)
 ACF_by_year_all$actname <- rep("Forest- Avoided Conversion",93)
 
-## save ACF simulation results
-save(ACF_carbon_sum, ACF_CI_High, ACF_CI_Low, ACF_median, LowImp_ACF, Amb_ACF, Mod_ACF, ACF_by_year_all,ACF_imp, file="ACF_scenario_results2.RData")
 
-# display results
-ggplot(ACF_by_year_all,aes(x=year,y=med))+
-  geom_line(aes(color=scen))+
-  geom_ribbon(aes(ymin=lower, ymax=upper, color=scen), linetype=2,alpha=0.1)
-
-### 4. Reforestation of riparian areas (rref) ####
+# 4. Reforestation of riparian areas (rref) -------------------------------------------------
 rref_imprates = NCS_inputs[c(8:9),c(1:4)]
 rref_imprates$activity <-as.factor(rref_imprates$activity)
 rref_imprates$activity <-droplevels(rref_imprates$activity)
@@ -460,54 +445,66 @@ rref_carbon_rates$type<-as.factor(rref_carbon_rates$type)
 rref_max_east = 76634.55
 rref_max_west = 125780.4
 
-
 rref_max=rbind(rref_max_east,rref_max_west)
 
-#
+# set implementation targets for the 3 scenarios
+rref_imprates # review baseline (annual ha restored in east and western OR) and historical variation (CV)
 
+# Riparian Reforestation narrative description
+# All scenarios include a linear decrease to the target rate by 2030
+# Limited Implementation = Increased riparian reforestation by 72% in eastern OR and 42% in western OR (based on historical variation); allows 10 years to reach target rates
+# Moderate Implementation = Doubling (100% increase) in riparian reforestation rate by 2050, 250% increase by 2040, and 300% increase by 2050. 
+# Ambitious Implementation = Rapidly increased riparian reforestation rates to reach the maximum area available by 2050. Maximum area estimated as 76,635 ha east of the Cascades and 125,780 ha west of the Cascades. East side riparian reforestation increases to 500% by 2030 and reaches the maximum area threshold in 2032. West side riparian reforestation increases by 1000% (10x) by 2030 and reaches maximum area threshold by 2044.
+
+rref_target2030 <- cbind(c(0.72,1.0,5.0),c(0.42, 1.0,10.0)) # percent increase in restoration for each target decade in each of three scenarios
+rref_target2040 <- cbind(c(0.72,2.5,5.0),c(0.42, 2.5,10.0))
+rref_target2050 <- cbind(c(0.72,3.0,5.0),c(0.42, 3.0,10.0))
+
+# build array to hold yearly implementation rates for scenarios
 rref_imp <- array(NA,dim=c(length(rref_imprates$activity),length(years),imp_scenarios), dimnames=list(rref_imprates$activity,years,scenario.names))
 
-# limited implementation: assume historical variation to be reached by 2030
-rref_imp[1,10:31,1] <- rref_imprates$baseline[1]*rref_imprates$cv[1] # historical variation for east riparian restoration
-rref_imp[2,10:31,1] <- rref_imprates$baseline[2]*rref_imprates$cv[2] # hv for western riparian restoration
-for (cnum in 1:9){  # ramp up period of 10 years to reach the historical variation
-  rref_imp[1,cnum,1] <- ((rref_imprates$baseline[1]*rref_imprates$cv[1])/10)*cnum
-  rref_imp[2,cnum,1] <- ((rref_imprates$baseline[2]*rref_imprates$cv[2])/10)*cnum
+# limited implementation: assume increase equivalent to historical variation to be reached by 2030
+for (ynum in 1:9){  # ramp up period of 10 years to reach the historical variation
+  rref_imp[1,ynum,1] <- ((rref_imprates$baseline[1]*rref_target2030[1,1])/10)*ynum
+  rref_imp[2,ynum,1] <- ((rref_imprates$baseline[2]*rref_target2030[1,2])/10)*ynum
+}
+rref_imp[1,10:31,1] <- rref_imprates$baseline[1]*rref_target2030[1,1] # east riparian restoration
+rref_imp[2,10:31,1] <- rref_imprates$baseline[2]*rref_target2030[1,2] # western riparian restoration
+
+# moderate implementation
+for (ynum in 1:10){ # first 10 years
+  rref_imp[,ynum,2] <- ((rref_imprates$baseline*rref_target2030[2])/10)*ynum
+}
+for (ynum in 11:20){ # 2030 to 2040; starts at 2020 target and increases to reach 2040 target
+  rref_imp[,ynum,2] <- rref_target2030[2]*rref_imprates$baseline + ((rref_imprates$baseline*rref_target2040[2] - rref_imprates$baseline*rref_target2030[2])/10)*(ynum-10)
+}
+for (ynum in 21:31){ # starts at 2040 target and increases to reach 2050 target
+  rref_imp[,ynum,2] <- rref_target2040[2]*rref_imprates$baseline + ((rref_imprates$baseline*rref_target2050[2] - rref_imprates$baseline*rref_target2040[2])/11)*(ynum-20)
 }
 
 # ambitious implementation #
 # need to include baseline implementation and maximum threshold
-rref_MPtarget_east <- rref_max_east - rref_baseline$East_cum_area[31] #57394.23 ha
-rref_MPtarget_west <- rref_max_west - rref_baseline$West_cum_area[31] #118110.6 ha
+rref_MPtarget_east <- 57394.23 # assumes that baseline rate of restoration continues; this is cumulative max additional restoration potential
+rref_MPtarget_west <- 118110.6 # assumes that baseline rate of restoration continues; this is cumulative max additional restoration potential
 rref_maxtarget <- rbind(rref_MPtarget_east,rref_MPtarget_west)
 
-for (cnum in 1:10){
-  rref_imp[1,cnum,3] <- ((rref_imprates$baseline[1]*5)/10)*cnum
+#east side
+for (ynum in 1:10){
+  rref_imp[1,ynum,3] <- ((rref_imprates$baseline[1]*rref_target2030[3,1])/10)*ynum
 }
-for (cnum in 11:31){
-  rref_imp[1,cnum,3] <- (rref_imprates$baseline[1]*5)
+for (ynum in 11:31){
+  rref_imp[1,ynum,3] <- (rref_imprates$baseline[1]*rref_target2030[3,1])
 }
 
 #west side
-for (cnum in 1:10){
-  rref_imp[2,cnum,3] <- ((rref_imprates$baseline[2]*10)/10)*cnum
+for (ynum in 1:10){
+  rref_imp[2,ynum,3] <- ((rref_imprates$baseline[2]*rref_target2030[3,2])/10)*ynum
 }
-for (cnum in 11:31){
-  rref_imp[2,cnum,3] <- ((rref_imprates$baseline[2]*10))
-}
-
-# moderate implementation
-for (cnum in 1:10){
-  rref_imp[,cnum,2] <- ((rref_imprates$baseline)/10)*cnum
-}
-for (cnum in 11:20){
-  rref_imp[,cnum,2] <- ((rref_imprates$baseline*2.5 - rref_imprates$baseline)/10)*(cnum-10)+rref_imprates$baseline
-}
-for (cnum in 21:31){
-  rref_imp[,cnum,2] <- ((rref_imprates$baseline*3 - rref_imprates$baseline*2.5)/11)*(cnum-20)+rref_imprates$baseline*2.5
+for (ynum in 11:31){
+  rref_imp[2,ynum,3] <- ((rref_imprates$baseline[2]*rref_target2030[3,2]))
 }
 
-## run riparian reforest scenarios ####
+## run riparian reforest scenarios
 # set up empty data frames or lists
 rref_carbon_sum = array(NA, dim=c(imp_scenarios,iterations,length(years),2))
 
@@ -545,12 +542,12 @@ for (irate in 1:imp_scenarios) {
       })
     }
   }
-  results_out[[irate]] = reforest_carbon_sum
+  results_out[[irate]] = rref_carbon_sum
   
   print(paste('finished Reforest implementation scenario ', irate))
 } 
 
-## summarize reforestation results ####
+## summarize reforestation results 
 rref_CI_High <- apply(rref_carbon_sum,c(1,3,4),quantile,0.95)/1e6
 rownames(rref_CI_High) <- scenario.names
 rref_median <- apply(rref_carbon_sum,c(1,3,4),median)/1e6
@@ -569,64 +566,53 @@ rref_by_year_all <- cbind.data.frame(rbind(LowImp_rref,Mod_rref,Amb_rref),scen)
 rref_by_year_all$year <- rep(yr,3)
 rref_by_year_all$actname <- rep("Riparian Reforestation",93)
 
-## save rref simulation results
-save(rref_carbon_sum, rref_CI_High, rref_CI_Low, rref_median, LowImp_rref, Amb_rref, Mod_rref, rref_by_year_all,rref_imp, file="rref_scenario_results2.RData")
-
-# display results
-ggplot(rref_by_year_all,aes(x=year,y=med))+
-  geom_line(aes(color=scen))+
-  geom_ribbon(aes(ymin=lower, ymax=upper, color=scen), linetype=2,alpha=0.1)
-
-### 5. Sage-steppe avoided conversion and restoration ####
+# 5. Sage-steppe avoided conversion and restoration -----------------------------------------
 sage_inputs <- NCS_inputs[c(5:6),]
 sage_inputs$activity <-as.factor(sage_inputs$activity)
 sage_inputs$activity <-droplevels(sage_inputs$activity)
 sage_carbon_stocks = sage_inputs[,c(1:2,7:8)]
 sage_carbon_stocks$type<-as.factor(sage_carbon_stocks$type)
 sage_carbon_rates = sage_inputs[,c(1:2,5:6)]
-## set scenario implementation rates ####
+## set scenario implementation rates 
 
-sage_inputs <- sage_inputs %>%
+sage_inputs <- sage_inputs %>%  # set maximum area estimates
   mutate(max=c(3869790,905970))
 
 sage_imp <- array(NA,dim=c(length(sage_inputs$activity),length(years),imp_scenarios), dimnames=list(sage_inputs$activity,years,scenario.names))
 
 # limited implementation: assume historical variation of 10%, to be reached by 2030
 sage_imp[,10:31,1] <- sage_inputs$baseline*0.10 # historical variation
-for (cnum in 1:9){  # ramp up period of 10 years to reach the historical variation
-  sage_imp[,cnum,1] <- ((sage_inputs$baseline*0.10)/10)*cnum
+for (ynum in 1:9){  # ramp up period of 10 years to reach the historical variation
+  sage_imp[,ynum,1] <- ((sage_inputs$baseline*0.10)/10)*ynum
 }
 # ambitious implementatio
-for (cnum in 1:9) {
-  sage_imp[1,cnum,3] <- sage_inputs$baseline[1]/10*cnum
-  sage_imp[2,cnum,3] <- (sage_inputs$baseline[2]*3-sage_inputs$baseline[2])/10*cnum
+for (ynum in 1:9) {
+  sage_imp[1,ynum,3] <- sage_inputs$baseline[1]/10*ynum
+  sage_imp[2,ynum,3] <- (sage_inputs$baseline[2]*3-sage_inputs$baseline[2])/10*ynum
 }
 sage_imp[1,10:31,3] <- sage_inputs$baseline[1]
 sage_imp[2,10:31,3] <- sage_inputs$baseline[2]*3-sage_inputs$baseline[2]
 
 # moderate implementation
-for (cnum in 1:9) {
-  sage_imp[1,cnum,2] <- sage_inputs$baseline[1]*0.1
-  sage_imp[2,cnum,2] <- (sage_inputs$baseline[2])/10*cnum
+for (ynum in 1:9) {
+  sage_imp[1,ynum,2] <- sage_inputs$baseline[1]*0.1
+  sage_imp[2,ynum,2] <- (sage_inputs$baseline[2])/10*ynum
 }
-for (cnum in 10:31) {
-  sage_imp[1,cnum,2] <- sage_inputs$baseline[1]*0.2
-  sage_imp[2,cnum,2] <- (sage_inputs$baseline[2])/20*(cnum-10)+sage_inputs$baseline[2]
+for (ynum in 10:31) {
+  sage_imp[1,ynum,2] <- sage_inputs$baseline[1]*0.2
+  sage_imp[2,ynum,2] <- (sage_inputs$baseline[2])/20*(ynum-10)+sage_inputs$baseline[2]
 }
 
-# run implementation scenarios for sage ####
+# run implementation scenarios for sage 
 sage_carbon_sum = array(NA, dim=c(imp_scenarios,iterations,length(years),2))
 results_out = list()
 
 # SCENARIO LOOP
 for (irate in 1:imp_scenarios) {
-  # irate=1
   # ACTIVITY LOOP
   for (act in 1:2) {
-    # act = 1
     act_name =sage_carbon_rates$activity[act]
     for (y in 1:length(years)){
-      # y=1
       imp_rate = if (irate == 1) {
         imp_rate = sage_imp[act,y,1]
       }else if (irate == 2) {
@@ -679,7 +665,7 @@ for (irate in 1:imp_scenarios) {
   print(paste('finished sage implementation scenario ', irate))
 } 
 
-## summarize sage results ####
+## summarize sage results
 sage_CI_High <- apply(sage_carbon_sum,c(1,3,4),quantile,0.95)/1e6
 rownames(sage_CI_High) <- scenario.names
 sage_median <- apply(sage_carbon_sum,c(1,3,4),median)/1e6
@@ -699,56 +685,49 @@ sage_by_year_all <- cbind.data.frame(rbind(LowImp_sage,Mod_sage,Amb_sage),scen)
 sage_by_year_all$year <- rep(yr,3)
 sage_by_year_all$actname <- rep("Sagebrush-steppe pathways",93)
 
-## save sage simulation results
-save(sage_carbon_sum, sage_CI_High, sage_CI_Low, sage_median, LowImp_sage, Amb_sage, Mod_sage, sage_by_year_all,sage_imp, file="sage_scenario_results.RData")
 
-# display results
-ggplot(sage_by_year_all,aes(x=year,y=med))+
-  geom_line(aes(color=scen))+
-  geom_ribbon(aes(ymin=lower, ymax=upper, color=scen), linetype=2,alpha=0.1)
-
-### 6. Restoration of tidal wetlands (tide) ####
+# 6. Restoration of tidal wetlands (tide) --------------------------------------
 tide_inputs <- NCS_inputs[c(7),]
 tide_inputs$activity <-as.factor(tide_inputs$activity)
 tide_inputs$activity <-droplevels(tide_inputs$activity)
 
-## set scenario implementation rates ####
+## set scenario implementation rates 
 tide_inputs <- tide_inputs %>%
-  mutate(max=5205)
+  mutate(max=5205)  # set max area
 
 tide_imp <- array(NA,dim=c(length(tide_inputs$activity),length(years),imp_scenarios), dimnames=list(tide_inputs$activity,years,scenario.names))
 # limited implementation: assume historical variation 
 tide_imp[,10:31,1] <- 50 # increase by 50 ha in 2030 (>100% h.v.)
-for (cnum in 1:9){  # ramp up period of 10 years to reach the historical variation
-  tide_imp[,cnum,1] <- 5*cnum
+for (ynum in 1:9){  # ramp up period of 10 years to reach the historical variation
+  tide_imp[,ynum,1] <- 5*ynum
 }
 # ambitious implementation
-for (cnum in 1:5) {
-  tide_imp[,cnum,3] <- (tide_inputs$baseline)/5*cnum # doubling = increase by baseline in 5 years
+for (ynum in 1:5) {
+  tide_imp[,ynum,3] <- (tide_inputs$baseline)/5*ynum # doubling = increase by baseline in 5 years
 }
-for (cnum in 6:15) {
-  tide_imp[,cnum,3] <- (tide_inputs$baseline*4-tide_inputs$baseline*2)/10*(cnum-5)+tide_inputs$baseline # doubling again; target = 4*baseline-2*baseline
+for (ynum in 6:15) {
+  tide_imp[,ynum,3] <- (tide_inputs$baseline*4-tide_inputs$baseline*2)/10*(ynum-5)+tide_inputs$baseline # doubling again; target = 4*baseline-2*baseline
 }
 
-for (cnum in 16:26) {
-  tide_imp[,cnum,3] <- (tide_inputs$baseline*8-tide_inputs$baseline*4)/15*(cnum-15)+tide_inputs$baseline*3
+for (ynum in 16:26) {
+  tide_imp[,ynum,3] <- (tide_inputs$baseline*8-tide_inputs$baseline*4)/15*(ynum-15)+tide_inputs$baseline*3
 }
 
 tide_imp[,27,3] <- 50  ### REACH MAXIMUM AREA OF 5200 HA OF HIGHLY SALINE TIDAL WETLANDS AT THIS POINT
 
-for (cnum in 28:31) {
-  tide_imp[,cnum,3] <- 0
+for (ynum in 28:31) {
+  tide_imp[,ynum,3] <- 0
 }
 
 # moderate implementation; take 10 years to incrase by 100 ha/year
-for (cnum in 1:10) {
-  tide_imp[,cnum,2] <- 100/10*cnum
+for (ynum in 1:10) {
+  tide_imp[,ynum,2] <- 100/10*ynum
 }
 
 tide_imp[,11:31,2] <- 100
 
 
-# run implementation scenarios for tidal wetlands ####
+# run implementation scenarios for tidal wetlands
 tide_carbon_sum = array(NA, dim=c(imp_scenarios,iterations,length(years),1))
 results_out = list()
 
@@ -799,7 +778,7 @@ for (irate in 1:imp_scenarios) {
   print(paste('finished tide implementation scenario ', irate))
 } 
 
-## summarize tide results ####
+## summarize tide results 
 tide_CI_High <- apply(tide_carbon_sum,c(1,3,4),quantile,0.95)/1e6
 rownames(tide_CI_High) <- scenario.names
 tide_median <- apply(tide_carbon_sum,c(1,3,4),median)/1e6
@@ -819,55 +798,44 @@ tide_by_year_all$year <- rep(yr,3)
 tide_by_year_all$actname <- rep("Tidal Wetlands",93)
 
 
-## save tide simulation results
-save(tide_carbon_sum, tide_CI_High, tide_CI_Low, tide_median, LowImp_tide, Amb_tide, Mod_tide, tide_by_year_all,tide_imp, file="tide_scenario_results.RData")
-
-# display results
-ggplot(tide_by_year_all,aes(x=year,y=med))+
-  geom_line(aes(color=scen))+
-  geom_ribbon(aes(ymin=lower, ymax=upper, color=scen), linetype=2,alpha=0.1)
-
-### 7. Grassland Avoided Conversion ####
+# 7. Grassland Avoided Conversion ----------------------------------
 grass_inputs <- NCS_inputs[c(10),]
 grass_inputs$activity <-as.factor(grass_inputs$activity)
 grass_inputs$activity <-droplevels(grass_inputs$activity)
 
-## set scenario implementation rates ####
+## set scenario implementation rates #
 
 grass_imp <- array(NA,dim=c(length(grass_inputs$activity),length(years),imp_scenarios), dimnames=list(grass_inputs$activity,years,scenario.names))
 # low implementation: assume historical variation 
 grass_imp[,10:31,1] <- grass_inputs$baseline*0.10 # 10% of baseline
-for (cnum in 1:9){  # ramp up period of 10 years to reach the historical variation
-  grass_imp[,cnum,1] <- (grass_inputs$baseline*0.10)/10*cnum
+for (ynum in 1:9){  # ramp up period of 10 years to reach the historical variation
+  grass_imp[,ynum,1] <- (grass_inputs$baseline*0.10)/10*ynum
 }
 # ambitious implementation: maximum potential 
-for (cnum in 1:10) {
-  grass_imp[,cnum,3] <- (grass_inputs$baseline)/10*cnum # decrease by equivalent of baseline amount by 2030
+for (ynum in 1:10) {
+  grass_imp[,ynum,3] <- (grass_inputs$baseline)/10*ynum # decrease by equivalent of baseline amount by 2030
 }
 grass_imp[,11:31,3] <- grass_inputs$baseline # 100% of baseline (i.e. no conversion after 2030)
 
 # moderate implementation - decreases conversion by 50% by 2030 and then keeps that
-for (cnum in 1:10) {
-  grass_imp[,cnum,2] <- ((grass_inputs$baseline)*0.5)/10*cnum 
+for (ynum in 1:10) {
+  grass_imp[,ynum,2] <- ((grass_inputs$baseline)*0.5)/10*ynum 
 }
-for (cnum in 11:31) {
-  grass_imp[,cnum,2] <- ((grass_inputs$baseline)*0.5)/21*(cnum-10) + grass_inputs$baseline*0.5
+for (ynum in 11:31) {
+  grass_imp[,ynum,2] <- ((grass_inputs$baseline)*0.5)/21*(ynum-10) + grass_inputs$baseline*0.5
 }
 
 
-# run implementation scenarios for grass ####
+# run implementation scenarios for grass 
 grass_carbon_sum = array(NA, dim=c(imp_scenarios,iterations,length(years),1))
 results_out = list()
 
 # SCENARIO LOOP
 for (irate in 1:imp_scenarios) {
-  # irate=1
   # ACTIVITY LOOP
   for (act in 1:length(grass_inputs$activity)) {
-    # act = 1
     act_name =grass_inputs$activity[act]
     for (y in 1:length(years)){
-      # y=1
       imp_rate = if (irate == 1) {
         imp_rate = grass_imp[act,y,1]
       }else if (irate == 2) {
@@ -906,7 +874,7 @@ for (irate in 1:imp_scenarios) {
   print(paste('finished grass implementation scenario ', irate))
 } 
 
-## summarize grass results ####
+## summarize grass results 
 grass_CI_High <- apply(grass_carbon_sum,c(1,3,4),quantile,0.95)/1e6
 rownames(grass_CI_High) <- scenario.names
 grass_median <- apply(grass_carbon_sum,c(1,3,4),median)/1e6
@@ -915,7 +883,6 @@ grass_CI_Low <- apply(grass_carbon_sum,c(1,3,4),quantile,0.05)/1e6
 rownames(grass_CI_Low) <- scenario.names
 
 ## reshape data
-scen
 LowImp_grass <- cbind(rowSums(cbind(grass_median[1,1:31,])),rowSums(cbind(grass_CI_High[1,1:31,])),rowSums(cbind(grass_CI_Low[1,1:31,])))
 colnames(LowImp_grass)=c("med","upper","lower")
 Amb_grass <- cbind(rowSums(cbind(grass_median[3,1:31,])),rowSums(cbind(grass_CI_High[3,1:31,])),rowSums(cbind(grass_CI_Low[3,1:31,])))
@@ -925,76 +892,67 @@ colnames(Mod_grass)=c("med","upper","lower")
 grass_by_year_all <- cbind.data.frame(rbind(LowImp_grass,Mod_grass,Amb_grass),scen)
 grass_by_year_all$year <- rep(yr,3)
 grass_by_year_all$actname <- rep("Grassland - AC",93)
-## save grass simulation results
-save(grass_carbon_sum, grass_CI_High, grass_CI_Low, grass_median, LowImp_grass, Amb_grass, Mod_grass, grass_by_year_all,grass_imp, file="grass_scenario_results.RData")
 
-# display results
-ggplot(grass_by_year_all,aes(x=year,y=med))+
-  geom_line(aes(color=scen))+
-  geom_ribbon(aes(ymin=lower, ymax=upper, color=scen), linetype=2,alpha=0.1)
 
-### 8. Agricultural Pathways (ag) ####
+# 8. Agricultural Pathways (ag) -------------------------------
 ag_inputs <- NCS_inputs[c(11:13),]
 ag_inputs$activity <-as.factor(ag_inputs$activity)
 ag_inputs$activity <-droplevels(ag_inputs$activity)
 
 ag_inputs$max <- c("1877500","916000",NA)
 
-## set scenario implementation rates for agriculture ####
+## set scenario implementation rates for agriculture 
 ag_imp <- array(NA,dim=c(length(ag_inputs$activity),length(years),imp_scenarios), dimnames=list(ag_inputs$activity,years,scenario.names))
 
 # assume historical variation 
-for (cnum in 1:9){  # ramp up period of 10 years to reach the historical variation
-  ag_imp[1,cnum,1] <- (ag_inputs$baseline[1]*ag_inputs$cv[1])/10*cnum
-  ag_imp[2,cnum,1] <- (ag_inputs$baseline[2]*ag_inputs$cv[2])/10*cnum
-  ag_imp[3,cnum,1] <- (ag_inputs$baseline[3]*(ag_inputs$cv[3]*0.4))/10*cnum # for N reduction, we assume 18% reduction on 40% of acres (18% is CV, 40% based on N.U.E.)
+for (ynum in 1:9){  # ramp up period of 10 years to reach the historical variation
+  ag_imp[1,ynum,1] <- (ag_inputs$baseline[1]*ag_inputs$cv[1])/10*ynum
+  ag_imp[2,ynum,1] <- (ag_inputs$baseline[2]*ag_inputs$cv[2])/10*ynum
+  ag_imp[3,ynum,1] <- (ag_inputs$baseline[3]*(ag_inputs$cv[3]*0.4))/10*ynum # for N reduction, we assume 18% reduction on 40% of acres (18% is CV, 40% based on N.U.E.)
 }
-for (cnum in 10:31){ # historical variation
-  ag_imp[1,cnum,1] <- (ag_inputs$baseline[1]*ag_inputs$cv[1])
-  ag_imp[2,cnum,1] <- (ag_inputs$baseline[2]*ag_inputs$cv[2])
-  ag_imp[3,cnum,1] <- (ag_inputs$baseline[3])*(ag_inputs$cv[3]*0.4)
+for (ynum in 10:31){ # historical variation
+  ag_imp[1,ynum,1] <- (ag_inputs$baseline[1]*ag_inputs$cv[1])
+  ag_imp[2,ynum,1] <- (ag_inputs$baseline[2]*ag_inputs$cv[2])
+  ag_imp[3,ynum,1] <- (ag_inputs$baseline[3])*(ag_inputs$cv[3]*0.4)
 }
 
 # ambitious implementation potential
-for (cnum in 1:31 ){ # linear increases in cover crop and no-till to reach max by 2050 (max is 50% of cropland and all tilled cropland)
-  ag_imp[1,cnum,3] <- ((as.numeric(ag_inputs$max[1])*0.5)-ag_inputs$baseline[1])/30*cnum
-  ag_imp[2,cnum,3] <- (as.numeric(ag_inputs$max[2])-ag_inputs$baseline[2])/30*cnum
+for (ynum in 1:31 ){ # linear increases in cover crop and no-till to reach max by 2050 (max is 50% of cropland and all tilled cropland)
+  ag_imp[1,ynum,3] <- ((as.numeric(ag_inputs$max[1])*0.5)-ag_inputs$baseline[1])/30*ynum
+  ag_imp[2,ynum,3] <- (as.numeric(ag_inputs$max[2])-ag_inputs$baseline[2])/30*ynum
 }
-for (cnum in 1:10) { # linear decrease to reach target of 40% on 40% of cropland by 2030
-  ag_imp[3,cnum,3] <- ((ag_inputs$baseline[3]*(0.40*0.4))/10)*cnum
+for (ynum in 1:10) { # linear decrease to reach target of 40% on 40% of cropland by 2030
+  ag_imp[3,ynum,3] <- ((ag_inputs$baseline[3]*(0.40*0.4))/10)*ynum
 }
 ag_imp[3,11:31,3] <- (ag_inputs$baseline[3]*(0.40*0.4))
 
 # moderate implementation
-for (cnum in 1:10){ # cover crops increase by 150% and no-till increases by 50%
-  ag_imp[1,cnum,2] <- (ag_inputs$baseline[1]*1.5)/10*cnum
-  ag_imp[2,cnum,2] <- (ag_inputs$baseline[2]*0.5)/10*cnum
+for (ynum in 1:10){ # cover crops increase by 150% and no-till increases by 50%
+  ag_imp[1,ynum,2] <- (ag_inputs$baseline[1]*1.5)/10*ynum
+  ag_imp[2,ynum,2] <- (ag_inputs$baseline[2]*0.5)/10*ynum
 }
-for (cnum in 11:31) { # cover crops quadruple by 2050, no-till increase by 100%
-  ag_imp[1,cnum,2] <- ((ag_inputs$baseline[1]*4-ag_inputs$baseline[1]*1.5)/20*(cnum-10))+(ag_inputs$baseline[1]*1.5)
-  ag_imp[2,cnum,2] <- ag_inputs$baseline[2]
-}
-
-for (cnum in 1:10) { # linear decrease to reach target of 25% on 40% of acres (0.25*0.40) by 2030, decrease by 0.25 on 100% of acres by 2050
-  ag_imp[3,cnum,2] <- ((ag_inputs$baseline[3]*(0.25*0.4))/10)*cnum
-}
-for (cnum in 11:31) {
-  ag_imp[3,cnum,2] <- (((ag_inputs$baseline[3]*0.25*0.4-ag_inputs$baseline[3]*0.25*0.4)/21) *(cnum-10))+(ag_inputs$baseline[3]*0.25*0.40)
+for (ynum in 11:31) { # cover crops quadruple by 2050, no-till increase by 100%
+  ag_imp[1,ynum,2] <- ((ag_inputs$baseline[1]*4-ag_inputs$baseline[1]*1.5)/20*(ynum-10))+(ag_inputs$baseline[1]*1.5)
+  ag_imp[2,ynum,2] <- ag_inputs$baseline[2]
 }
 
-## run the ag implementation scenarios ####
+for (ynum in 1:10) { # linear decrease to reach target of 25% on 40% of acres (0.25*0.40) by 2030, decrease by 0.25 on 100% of acres by 2050
+  ag_imp[3,ynum,2] <- ((ag_inputs$baseline[3]*(0.25*0.4))/10)*ynum
+}
+for (ynum in 11:31) {
+  ag_imp[3,ynum,2] <- (((ag_inputs$baseline[3]*0.25*0.4-ag_inputs$baseline[3]*0.25*0.4)/21) *(ynum-10))+(ag_inputs$baseline[3]*0.25*0.40)
+}
+
+## run the ag implementation scenarios 
 ag_carbon_sum = array(NA, dim=c(imp_scenarios,iterations,length(years),length(ag_inputs$activity)))
 results_out = list()
 
 # SCENARIO LOOP
 for (irate in 1:imp_scenarios) {
-  # irate=1
   # ACTIVITY LOOP
   for (act in 1:length(ag_inputs$activity)) {
-    # act = 2
     act_name =ag_inputs$activity[act]
     for (y in 1:length(years)){
-      # y=1
       imp_rate = if (irate == 1) {
         imp_rate = ag_imp[act,y,1]
       }else if (irate == 2) {
@@ -1045,7 +1003,7 @@ for (irate in 1:imp_scenarios) {
   print(paste('finished ag implementation scenario ', irate))
 } 
 
-## Summarize agriculture results ####
+## Summarize agriculture results 
 ag_CI_High <- apply(ag_carbon_sum,c(1,3,4),quantile,0.95)/1e6
 rownames(ag_CI_High) <- scenario.names
 ag_median <- apply(ag_carbon_sum,c(1,3,4),median)/1e6
@@ -1077,25 +1035,17 @@ Nmgmt_by_year$actname <- rep("N Mgmt",93)
 ag_by_year_all_act <- rbind(CC_by_year, NT_by_year,Nmgmt_by_year)
 colnames(ag_by_year_all_act)[1:3]=c("med","upper","lower")
 
-## save ag simulation results
-save(ag_carbon_sum, ag_CI_High, ag_CI_Low, ag_median, ag_by_year_all_act,ag_imp, file="ag_scenario_results.RData")
-
-# display results
-ggplot(ag_by_year_all_act,aes(x=year,y=med))+
-  geom_line(aes(color=scen,linetype=actname))
-# geom_ribbon(aes(ymin=lower, ymax=upper, color=scen), linetype=2,alpha=0.1)
-
-
-### ALL NCS SUMMARY ####
+# -----------------------------------------------
+# Summarize all NCS Pathway Activities ----------------------------
 
  NCS_all <- rbind(IFM_by_year_all_ownerships,reforest_by_year_all_prodclass,rref_by_year_all,ACF_by_year_all,
                   tide_by_year_all, sage_by_year_all, grass_by_year_all, ag_by_year_all_act)
- unique(NCS_all$actname) # what pathways are included/separated? (Sage-steppe is the only grouped path)
+ unique(NCS_all$actname) 
 
  NCS_all$group <- ifelse(NCS_all$actname %in% c("Forest- Avoided Conversion","Grassland - AC",
                                                 "Sagebrush-steppe pathways"),"Avoided Conversion",
                          ifelse(NCS_all$actname %in% c("Timber Harvest","Cover Crops","No-Till","N Mgmt"),
-                                "Land Management", "Restoration"))
+                                "Land Management", "Restoration"))  # rename pathways
 
 
 
@@ -1104,11 +1054,6 @@ ggplot(ag_by_year_all_act,aes(x=year,y=med))+
    summarise(median=sum(med),
              upper=sum(upper),
              lower=sum(lower))
-
-filter(NCS_totals,year==2035)
-filter(NCS_totals, year==2050)
-or2035 <- 23.9
-or2050 <- 8.7
 
 # calculate cumulative reductions
 NCS_totals <- NCS_totals %>%
@@ -1144,28 +1089,3 @@ NCS_total_activity_2050 <- NCS_total_activity %>%
   group_by(scen) %>%
   mutate(total=sum(median_cumsum), prop=median_cumsum/total)
 
-### DEEP DIVE INTO TIMBER DEFERMENT RESULTS
-head(ifm_inputs)
-ifm_inputs$ownership <- c("Private Industrial","Private Industrial","Private Non-industrial","Private Non-industrial",
-                          "Local","Local","State","State","Tribal","Tribal","Federal","Federal","NA","NA")
-ifm_baseline_summary <- ifm_inputs %>% 
-  group_by(ownership)%>%
-  filter(ownership != "NA") %>%
-  summarise(baseline_ownership=sum(baseline))%>%
-  mutate(total_baseline=sum(baseline_ownership), prop_total=baseline_ownership/total_baseline)
-
-ownership_emission_reduction <- apply(IFM_median,c(1,3),sum)
-
-ownership_emission_reduction <- as.data.frame(t(ownership_emission_reduction))
-ownership_emission_reduction$ownership <- c("Private Industrial","Private Industrial","Private Non-industrial","Private Non-industrial",
-                                            "Local","Local","State","State","Tribal","Tribal","Federal","Federal","NA","NA")
-ownership_reduction_summary <- ownership_emission_reduction %>% 
-  filter(ownership != "NA") %>%
-  group_by(ownership)%>%
-  summarise(owner_Limited=sum(Limited),owner_mod=sum(Moderate),owner_amb=sum(Ambitious))%>%
-  mutate(lim_prop=owner_Limited/-57.852,mod_prop=owner_mod/-84.760,amb_prop=owner_amb/-127.668)
-# Limited   Moderate  Ambitious 
-# -57.85156  -84.75981 -127.66768 
-
-# stacked bar chart for ownerships
-write.csv(ownership_reduction_summary, "emission_reduction_ownership.csv")
