@@ -21,7 +21,6 @@ library(grid)
 library(truncnorm)
 
 # Set the current working directory
-setwd("C:/Users/rograves/Documents/TNC/Box Sync/ORFO Climate Science & Policy HET/ORFO CC Science/NCS Pathways Analysis/NCS_AnalysisFiles/OR_NCS_R_Code_PLEASE DO NOT DISTRIBUTE")
 setwd('C:/NCSanalysis/') # Make sure this is correct for your computer!
 getwd() # Show current working directory
 
